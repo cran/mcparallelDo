@@ -1,4 +1,4 @@
-#'A repository for a variety of useful functions.
+#' Asynchronous Exploritory Data Analysis
 #'
 #' The primary function of this package is mcparallelDo().  
 #' To use mcparallelDo(), simply invoke the function with a curly braced wrapped code and the character element name to which you want to assign the results.
@@ -120,12 +120,13 @@ NULL
 #' These effects are accomplished via the automatic creation and destruction of a taskCallback and other functions inside the mcparallelDoManager.
 #' If job results have to be collected before you return to the top level, use \link{mcparallelDoCheck}.
 #' 
+#' 
 #' @param code The code to evaluate within a fork wrapped in {}
 #' @param targetValue A character element indicating the variable that the result of that job should be assigned to targetEnvironment
 #' @param verbose A boolean element; if TRUE the completion of the fork expr will be accompanied by a message
 #' @param targetEnvironment The environment in which you want targetValue to be created
 #'
-#' @return The variable name of the job, this can be manually collected via mccollect or, if on Windows, an empty string
+#' @return If \code{verbose} is set to TRUE, then the \code{character} variable name of the job. This can be manually collected via mccollect or, if on Windows, an empty string.  If \code{verbose} is set to FALSE, then NULL.
 #'
 #' @examples
 #' ## Create data
@@ -155,30 +156,27 @@ NULL
 #'   mcparallelDoCheck()
 #'   if (exists("output")) print(i)
 #' }
-#' @importFrom ArgumentCheck addError finishArgCheck
+#' 
+#' # Example of dispatching as assignment
+#' targetValueWithoutQuotes %mcpDo% sample(LETTERS, 10)
+#' 
+#' @importFrom checkmate assertCharacter makeAssertCollection assertEnvironment reportAssertions
 #' @importFrom R.utils tempvar
 #' @export
 mcparallelDo <- function(code, targetValue, verbose = TRUE, targetEnvironment = .GlobalEnv) {
-  Check <- ArgumentCheck::newArgCheck()
-  if (!is.character(targetValue)) {
-    ArgumentCheck::addError(
-      msg = "targetValue must be a character",
-      argcheck = Check
-    )
-  }
+  coll <- checkmate::makeAssertCollection()
+
+  checkmate::assertCharacter(targetValue,
+                             add = coll)
+
   if (length(targetValue) != 1) {
-    ArgumentCheck::addError(
-      msg = "targetValue must be a single element",
-      argcheck = Check
-    )
+    coll$push("targetValue must be a single element")
   }
-  if (!is.environment(targetEnvironment)) {
-    ArgumentCheck::addError(
-      msg = "targetEnvironment must be an environment",
-      argcheck = Check
-    )
-  }
-  ArgumentCheck::finishArgCheck(Check)
+
+  checkmate::assertEnvironment(targetEnvironment,
+                               add = coll)
+
+  checkmate::reportAssertions(coll)
   
   # Special handling for Windows
   if (!.Platform$OS.type=="unix") {
@@ -190,6 +188,16 @@ mcparallelDo <- function(code, targetValue, verbose = TRUE, targetEnvironment = 
                               value = parallel::mcparallel({try(code)}),
                               envir = targetEnvironment)
   .mcparallelDoManager$addJob(jobName, targetValue, verbose, targetEnvironment)
-  return(jobName)
+  if (verbose) return(jobName) else return(NULL)
+}
+NULL
+
+#' \%mdpDo\% Is an alternate form of calling the function, as if it were an assignment operator.  See examples.
+#' @rdname mcparallelDo
+#' @export
+`%mcpDo%`<- function(targetValue, code) {
+  target <- as.character(substitute(targetValue))
+  expr <- substitute(code)
+  mcparallelDo(expr, target, verbose = TRUE)
 }
 NULL

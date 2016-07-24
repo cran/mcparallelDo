@@ -5,7 +5,7 @@
 \alias{mcparallelDo-package}
 \title{mcparallelDo-package placeholder}
 \description{
-A repository for a variety of useful functions.
+Asynchronous Exploritory Data Analysis
 }
 \details{
 The primary function of this package is mcparallelDo().  
